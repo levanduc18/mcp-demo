@@ -3,7 +3,7 @@
 ## Installation
 
 ```bash
-cd server
+cd mcp-server
 yarn install
 ```
 

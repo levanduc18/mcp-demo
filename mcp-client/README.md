@@ -31,3 +31,7 @@ yarn preview
 - Mark todos as completed
 - Real-time sync with MCP server
 - Clean and minimal UI
+
+## Note:
+
+- Remember that we are using the in-memory db for demo. So all db will be removed if we restarted the server.
