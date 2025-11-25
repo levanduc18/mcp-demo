@@ -12,8 +12,11 @@
   "description": "MCP Todo Server",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.22.0",
-    "zod": "^4.1.13",
     "cors": "^2.8.5",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
   }
 }

@@ -16,15 +16,17 @@ export const TodoCreateOutput = z.object({
   createdAt: z.string(),
 });
 
-export const TodoListOutput = z.array(
-  z.object({
-    id: z.number(),
-    title: z.string(),
-    description: z.string().optional(),
-    completed: z.boolean(),
-    createdAt: z.string(),
-  })
-);
+export const TodoListOutput = z.object({
+  todos: z.array(
+    z.object({
+      id: z.number(),
+      title: z.string(),
+      description: z.string().optional(),
+      completed: z.boolean(),
+      createdAt: z.string(),
+    })
+  ),
+});
 
 export const TodoUpdateInput = z.object({
   id: z.number(),

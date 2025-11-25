@@ -40,7 +40,12 @@ export const TodoService = {
     const index = todos.findIndex((t) => t.id === id);
     if (index === -1) throw new Error("Todo not found");
 
-    todos[index] = { ...todos[index], ...data };
+    // Only update defined fields
+    for (const key of Object.keys(data)) {
+      if (data[key] !== undefined) {
+        todos[index][key] = data[key];
+      }
+    }
     return todos[index];
   },
 

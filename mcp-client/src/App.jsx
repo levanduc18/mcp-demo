@@ -1,18 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit2, Check, X, RefreshCw } from "lucide-react";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { v4 as uuidv4 } from "uuid";
+import { useMcpClient } from "./hooks/useMcpClient";
 
 // Read the API URL from environment variable
-const MCP_BRIDGE_URL = import.meta.env.VITE_MCP_SERVER_URL;
+const baseUrl = new URL(import.meta.env.VITE_MCP_SERVER_URL);
 
 export default function App() {
-  // Client and transport state
-  const [client, setClient] = useState(null);
-  const [transport, setTransport] = useState(null);
-  const [sessionId, setSessionId] = useState(undefined);
-
   // Todos state
   const [todos, setTodos] = useState([]);
 
@@ -29,239 +22,13 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const originalFetchRef = useRef(window.fetch);
+  const { client } = useMcpClient(baseUrl);
 
-  // Load todos on mount
   useEffect(() => {
+    if (!client) return;
+
     loadTodos();
-
-    const setupClient = async () => {
-      console.log(import.meta.env.VITE_MCP_SERVER_URL);
-      const newTransport = new StreamableHTTPClientTransport(new URL(import.meta.env.VITE_MCP_SERVER_URL));
-      const newClient = new Client({ transport });
-      try {
-        await newClient.connect(newTransport);
-        setClient(newClient);
-        setTransport(newTransport);
-
-        console.log("Connected to MCP Server");
-      } catch (err) {
-        setError("Failed to connect to MCP Server: " + err.message);
-        console.error("Failed to connect to MCP Server", err);
-      }
-    };
-
-    setupClient();
-
-    return () => {
-      transport?.close();
-    };
-  }, []);
-
-  const handleConnect = async (url) => {
-    if (client) {
-      return;
-    }
-
-    console.log("Connecting to MCP server at", url);
-
-    try {
-      // Generate a new session ID if we don't have one
-      const currentSessionId = sessionId || uuidv4();
-      setSessionId(currentSessionId);
-
-      // Create a new client
-      const newClient = new Client({
-        name: "mcp-interactive-client",
-        version: "1.0.0",
-      });
-
-      newClient.onerror = (error) => {
-        console.error("Client error:", error);
-        addOutput(`Error: ${error}`);
-      };
-
-      // Save original fetch
-      originalFetchRef.current = window.fetch;
-
-      // Override fetch method to ensure the header is set for ALL requests
-      window.fetch = function (input, init) {
-        // Create a new init object to avoid modifying the original
-        const newInit = { ...init };
-
-        // Initialize headers if not present
-        if (!newInit.headers) {
-          newInit.headers = new Headers();
-        } else if (!(newInit.headers instanceof Headers)) {
-          // Convert to Headers object if it's not already
-          const headers = new Headers();
-          Object.entries(newInit.headers).forEach(([key, value]) => {
-            headers.append(key, String(value));
-          });
-          newInit.headers = headers;
-        }
-
-        // Add the session ID header to ALL requests (not just /mcp)
-        // This ensures it's added regardless of how the transport makes requests
-        newInit.headers.set("Mcp-Session-Id", currentSessionId);
-
-        // Set CORS mode explicitly
-        newInit.mode = "cors";
-
-        // Don't send credentials by default to avoid preflight issues
-        if (newInit.credentials === undefined) {
-          newInit.credentials = "same-origin";
-        }
-
-        console.log(
-          "Fetch intercepted:",
-          typeof input === "string" ? input : input.toString(),
-          "headers:",
-          Object.fromEntries([...newInit.headers.entries()])
-        );
-
-        return originalFetchRef.current.call(window, input, newInit);
-      };
-
-      // Create transport
-      const newTransport = new StreamableHTTPClientTransport(new URL(MCP_BRIDGE_URL));
-
-      // Set up onclose handler to restore original fetch
-      newTransport.onclose = () => {
-        window.fetch = originalFetchRef.current;
-        console.log("HTTP transport closed");
-        setConnectionStatus("Connection Closed");
-      };
-
-      newTransport.onerror = (error) => {
-        window.fetch = originalFetchRef.current;
-        console.error("HTTP Transport Error:", error);
-        setConnectionStatus(`Transport Error: ${error.message}`);
-        setIsLoading(false);
-      };
-
-      // Set up notification handlers
-      newClient.setNotificationHandler(LoggingMessageNotificationSchema, (notification) => {
-        setNotificationCount((prev) => prev + 1);
-        const message = `Notification #${notificationCount + 1}: ${notification.params.level} - ${
-          notification.params.data
-        }`;
-        addOutput(message);
-        setNotifications((prev) => [...prev, message]);
-      });
-
-      newClient.setNotificationHandler(ResourceListChangedNotificationSchema, async (notification) => {
-        addOutput("Resource list changed notification received!");
-        try {
-          if (!newClient) {
-            addOutput("Client disconnected, cannot fetch resources");
-            return;
-          }
-          const resourcesResult = await newClient.request(
-            {
-              method: "resources/list",
-              params: {},
-            },
-            ListResourcesResultSchema
-          );
-
-          setAvailableResources(resourcesResult.resources);
-          addOutput(`Available resources count: ${resourcesResult.resources.length}`);
-        } catch (error) {
-          addOutput("Failed to list resources after change notification");
-        }
-      });
-
-      // Connect the client
-      await newClient.connect(newTransport);
-
-      // Send initialization notification
-      try {
-        addOutput("Sending notifications/initialized");
-        await newClient.notification({
-          method: "notifications/initialized",
-          params: {},
-        });
-        addOutput("Initialization notification sent successfully");
-      } catch (error) {
-        addOutput(`Failed to send initialization notification: ${error.message}`);
-      }
-
-      setConnectionStatus(`Connected (Session: ${currentSessionId})`);
-      addOutput(`Connected to MCP server with session ID: ${currentSessionId}`);
-
-      setClient(newClient);
-      setTransport(newTransport);
-
-      // Automatically fetch available tools
-      await listTools(newClient);
-    } catch (error) {
-      addOutput(`Failed to connect: ${error.message}`);
-      setConnectionStatus(`Connection Failed: ${error.message}`);
-      setClient(null);
-      setTransport(null);
-      // Restore original fetch on error
-      window.fetch = originalFetchRef.current;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    if (!client || !transport) {
-      addOutput("Not connected.");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await transport.close();
-      addOutput("Disconnected from MCP server");
-      setConnectionStatus("Disconnected");
-      setClient(null);
-      setTransport(null);
-      // Restore original fetch
-      window.fetch = originalFetchRef.current;
-    } catch (error) {
-      addOutput(`Error disconnecting: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleTerminateSession = async () => {
-    if (!client || !transport) {
-      addOutput("Not connected.");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      addOutput(`Terminating session with ID: ${sessionId}`);
-      await transport.terminateSession();
-      addOutput("Session terminated successfully");
-
-      // Also close the transport and clear client objects
-      await transport.close();
-      addOutput("Transport closed after session termination");
-      setClient(null);
-      setTransport(null);
-      setConnectionStatus("Disconnected (Session Terminated)");
-      // Restore original fetch
-      window.fetch = originalFetchRef.current;
-    } catch (error) {
-      addOutput(`Error terminating session: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleReconnect = async () => {
-    if (client) {
-      await handleDisconnect();
-    }
-    await handleConnect();
-  };
+  }, [client]);
 
   /**
    * Load todos from API
@@ -278,7 +45,8 @@ export default function App() {
         arguments: {},
       });
 
-      const data = response.structuredContent;
+      const data = response.structuredContent.todos;
+
       setTodos(data);
     } catch (err) {
       // Set error

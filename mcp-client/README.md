@@ -1,22 +1,25 @@
 # MCP Todo Client
 
 ## Installation
+
 ```bash
-cd client
-npm install
+cd mcp-client
+yarn install
 ```
 
 ## Running the Client
+
 ```bash
-npm run dev
+yarn dev
 ```
 
 Client will run on `http://localhost:8080`
 
 ## Building for Production
+
 ```bash
-npm run build
-npm run preview
+yarn build
+yarn preview
 ```
 
 ## Features
