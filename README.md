@@ -2,7 +2,7 @@
 
 ## Structure
 
-- mcp-server: Node server with 4 tools: todo_create, todo_list, todo_update, todo_delete and in memory. Expose with the StreamableHttpServerTransport.
+- mcp-server: Node server with 4 tools: todo_create, todo_list, todo_update, todo_delete and in-memory db. Expose with the StreamableHttpServerTransport.
 
 - mcp-client: React UI with the UI allow the user to create new todo, see the list of todos, update and delete the specific todo.
 
