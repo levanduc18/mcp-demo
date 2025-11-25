@@ -13,14 +13,7 @@ yarn install
 yarn start
 ```
 
-Server will run on `http://localhost:3000`
-
-## API Endpoints
-
-- `POST /api/todos` - Create a new todo
-- `GET /api/todos` - List all todos
-- `PUT /api/todos/:id` - Update a todo
-- `DELETE /api/todos/:id` - Delete a todo
+Server will run on `http://localhost:3000/mcp`
 
 ## MCP Tools
 
