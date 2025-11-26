@@ -20,6 +20,6 @@ Server will run on `http://localhost:3000/mcp`
 The server exposes four MCP tools:
 
 - `todo_create` - Create a new todo
-- `todo_list` - List all todos
+- `todo_list` - List all todos, return the UI resource
 - `todo_update` - Update a todo
 - `todo_delete` - Delete a todo
