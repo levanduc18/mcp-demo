@@ -4,14 +4,15 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "start": "nodemon index.js"
   },
   "keywords": [],
   "author": "Duc Le Van - lvd181299@gmail.com",
   "license": "ISC",
   "description": "MCP Todo Server",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.22.0",
+    "@mcp-ui/server": "^5.13.1",
+    "@modelcontextprotocol/sdk": "^1.23.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "zod": "^4.1.13"
